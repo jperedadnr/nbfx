@@ -26,6 +26,7 @@ import java.nio.file.Files;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
+import javafx.geometry.HPos;
 import javafx.scene.layout.Region;
 import org.junit.Rule;
 import org.junit.Test;
@@ -64,6 +65,12 @@ public class DiffEditingTest {
         JavaFxTestSupport.onFx(() -> {
             assertTrue(pane.isEditable());
             assertTrue(pane.editor().editableProperty().get());
+            // The line numbers of both texts are next to what joins them, and neither has breadcrumbs.
+            assertEquals(HPos.RIGHT, pane.leftEditor().gutterPositionProperty().get());
+            assertEquals(HPos.LEFT, pane.editor().gutterPositionProperty().get());
+            assertFalse(pane.leftEditor().showBreadcrumbsProperty().get());
+            assertFalse(pane.editor().showBreadcrumbsProperty().get());
+            assertTrue(pane.lookupAll(".breadcrumb-bar").stream().noneMatch(bar -> bar.isVisible()));
             assertTrue(pane.revertAllButton().isDisable());
             assertTrue(pane.editor().replaceRange(2, 3, "x"));
         });

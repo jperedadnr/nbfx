@@ -31,6 +31,7 @@ import javafx.beans.property.ReadOnlyStringProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ObservableValue;
+import javafx.geometry.HPos;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -188,6 +189,11 @@ final class DiffPane extends BorderPane implements DiffContent {
             if (editable) {
                 connectors.setOnRevert(this::revert);
             }
+            // The line numbers of both texts next to what joins them, and no breadcrumbs: a diff
+            // shows two texts, not where the caret is in one.
+            left.gutterPositionProperty().set(HPos.RIGHT);
+            left.showBreadcrumbsProperty().set(false);
+            right.showBreadcrumbsProperty().set(false);
             // Typed here, in another editor of the file, or read again from disk.
             edits = left.textVersionProperty().subscribe((was, now) -> recompare.playFromStart())
                     .and(right.textVersionProperty().subscribe((was, now) -> recompare.playFromStart()));
@@ -285,6 +291,11 @@ final class DiffPane extends BorderPane implements DiffContent {
     /** Whether the right side is edited here. */
     boolean isEditable() {
         return editable;
+    }
+
+    /** The editor of the left side, which is only shown; {@code null} without an editor service. */
+    EditorDocument leftEditor() {
+        return left;
     }
 
     /** The editor of the right side when it is edited here, else {@code null}. */
@@ -551,6 +562,7 @@ final class DiffPane extends BorderPane implements DiffContent {
                 out.write(unified.text().getBytes(StandardCharsets.UTF_8));
             }
             EditorDocument editor = editors.createPreviewDocument(file);
+            editor.showBreadcrumbsProperty().set(false);
             editor.setLineBands(DiffLines.unifiedBands(Diff.lines(unified.text())));
             editor.getNode().getStyleClass().add("diff-textual");
             return editor;

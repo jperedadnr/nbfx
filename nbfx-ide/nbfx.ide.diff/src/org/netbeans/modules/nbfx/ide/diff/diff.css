@@ -166,12 +166,6 @@
     -fx-background-color: rgb(210, 70, 70);
 }
 
-/* A diff shows two texts, not where the caret is in one: no breadcrumbs under its editors. */
-.diff-pane .code-editor > .editor-side-bars {
-    visibility: hidden;
-    -fx-managed: false;
-}
-
 /* The table of the files that differ, above the two texts. */
 .diff-browser .diff-split {
     -fx-padding: 0;

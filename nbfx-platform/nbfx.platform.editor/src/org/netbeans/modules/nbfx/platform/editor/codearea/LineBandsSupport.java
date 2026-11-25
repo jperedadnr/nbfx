@@ -321,11 +321,11 @@ final class LineBandsSupport {
             return;
         }
         // Across the gutter too, so that what is drawn beside the editor meets the band, not a gap.
-        Node gutter = codeArea.lookup(".left-side");
-        Bounds gutterView = gutter == null || !gutter.isVisible() ? null
-                : overlay.sceneToLocal(gutter.localToScene(gutter.getLayoutBounds()));
-        double bandX = gutterView == null ? view.getMinX() : Math.min(view.getMinX(), gutterView.getMinX());
-        double bandWidth = view.getMaxX() - bandX;
+        // The gutter is on the side its editor has it.
+        Bounds leftGutter = gutterIn(".left-side");
+        Bounds rightGutter = gutterIn(".right-side");
+        double bandX = leftGutter == null ? view.getMinX() : Math.min(view.getMinX(), leftGutter.getMinX());
+        double bandWidth = (rightGutter == null ? view.getMaxX() : Math.max(view.getMaxX(), rightGutter.getMaxX())) - bandX;
         clip.setX(bandX);
         clip.setY(view.getMinY());
         clip.setWidth(bandWidth);
@@ -378,6 +378,15 @@ final class LineBandsSupport {
             return lastStart + (index - last) * lineHeight;
         }
         return index == last ? lastStart : firstRowAtLeast(x, top, bottom, index);
+    }
+
+    /** Where the gutter of that style class is, in the overlay; {@code null} when there is none on that side. */
+    private Bounds gutterIn(String selector) {
+        Node gutter = codeArea.lookup(selector);
+        if (gutter == null || !gutter.isVisible() || gutter.getLayoutBounds().getWidth() <= 0) {
+            return null;
+        }
+        return overlay.sceneToLocal(gutter.localToScene(gutter.getLayoutBounds()));
     }
 
     /** The smallest {@code y} in {@code [low, high)} whose paragraph index is at least {@code index}. */
