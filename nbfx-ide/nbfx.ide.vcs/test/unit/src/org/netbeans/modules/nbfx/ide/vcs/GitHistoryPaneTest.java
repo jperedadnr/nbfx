@@ -25,12 +25,15 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BooleanSupplier;
 import javafx.scene.Scene;
+import javafx.scene.control.Hyperlink;
+import javafx.scene.control.MenuItem;
 import javafx.stage.Stage;
 import org.junit.After;
 import org.junit.Test;
 import org.netbeans.modules.nbfx.ide.vcs.GitHistory.Change;
 import org.netbeans.modules.nbfx.ide.vcs.GitHistory.Commit;
 import org.netbeans.modules.nbfx.ide.vcs.GitHistory.Criteria;
+import org.netbeans.modules.nbfx.ide.vcs.HistoryRows.ActionsRow;
 import org.netbeans.modules.nbfx.ide.vcs.HistoryRows.CommitRow;
 import org.netbeans.modules.nbfx.ide.vcs.HistoryRows.Field;
 import org.netbeans.modules.nbfx.ide.vcs.HistoryRows.FileRow;
@@ -182,6 +185,43 @@ public class GitHistoryPaneTest {
     }
 
     @Test
+    public void anOpenedCommitOffersItsActionsAsLinksAndInItsMenu() throws Exception {
+        GitHistoryPane pane = show(List.of("src"));
+        await(() -> pane.rows().size() == 3);
+        List<String> done = new CopyOnWriteArrayList<>();
+
+        JavaFxTestSupport.onFx(() -> {
+            // Without actions an opened commit shows its files only.
+            pane.toggle(MIDDLE);
+            assertEquals(List.of(new CommitRow(NEWEST, false), new CommitRow(MIDDLE, true), new FileRow(MIDDLE, APP),
+                    new MoreRow()), List.copyOf(pane.rows()));
+
+            pane.setCommitActions(commit -> List.of(
+                    new GitHistoryPane.CommitAction("Checkout " + commit.shortId(),
+                            () -> done.add("checkout " + commit.id())),
+                    new GitHistoryPane.CommitAction("Tag Commit", () -> done.add("tag " + commit.id()))));
+            assertEquals(List.of(new CommitRow(NEWEST, false), new CommitRow(MIDDLE, true), new ActionsRow(MIDDLE),
+                    new FileRow(MIDDLE, APP), new MoreRow()), List.copyOf(pane.rows()));
+        });
+        // Drawn as links that do what they say.
+        await(() -> !links(pane).isEmpty());
+        JavaFxTestSupport.onFx(() -> {
+            List<Hyperlink> links = links(pane);
+            assertEquals(List.of("Checkout 2222222", "Tag Commit"), links.stream().map(Hyperlink::getText).toList());
+            links.get(1).fire();
+            assertEquals(List.of("tag " + MIDDLE.id()), done);
+
+            // And in the menu of the commit, whichever of its rows is selected.
+            pane.list().getSelectionModel().select(3);
+            pane.list().getOnContextMenuRequested().handle(null);
+            List<MenuItem> items = pane.list().getContextMenu().getItems();
+            assertEquals(List.of("Checkout 2222222", "Tag Commit"), items.stream().map(MenuItem::getText).toList());
+            items.get(0).fire();
+            assertEquals(List.of("tag " + MIDDLE.id(), "checkout " + MIDDLE.id()), done);
+        });
+    }
+
+    @Test
     public void aSearchThatFailsSaysWhatGitSaid() throws Exception {
         failure = "fatal: bad revision 'nowhere'";
         GitHistoryPane pane = show(List.of("src"));
@@ -231,6 +271,11 @@ public class GitHistoryPaneTest {
             stage.show();
             return pane;
         });
+    }
+
+    /** The links of the action rows that are drawn. */
+    private static List<Hyperlink> links(GitHistoryPane pane) {
+        return pane.list().lookupAll(".git-history-actions .hyperlink").stream().map(Hyperlink.class::cast).toList();
     }
 
     private static void await(BooleanSupplier reached) throws InterruptedException {

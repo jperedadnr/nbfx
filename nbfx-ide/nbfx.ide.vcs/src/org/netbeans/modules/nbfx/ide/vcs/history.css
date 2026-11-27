@@ -104,6 +104,16 @@
     -fx-text-fill: derive(-fx-text-base-color, 30%);
 }
 
+/* The actions of an opened commit: a row of links, under its message. */
+.git-history-list .list-cell.git-history-actions {
+    -fx-padding: 0 8 2 20;
+}
+
+.git-history-list .git-history-actions .hyperlink {
+    -fx-padding: 0 8 0 0;
+    -fx-border-width: 0;
+}
+
 .git-history-list .list-cell.git-history-more {
     -fx-padding: 4 8 4 24;
 }

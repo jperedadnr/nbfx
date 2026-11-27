@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 import javafx.application.Platform;
 import javafx.css.PseudoClass;
 import javafx.geometry.HPos;
@@ -38,10 +39,12 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
 import javafx.scene.control.Tooltip;
@@ -60,6 +63,7 @@ import javafx.util.StringConverter;
 import org.netbeans.modules.nbfx.ide.vcs.GitHistory.Change;
 import org.netbeans.modules.nbfx.ide.vcs.GitHistory.Commit;
 import org.netbeans.modules.nbfx.ide.vcs.GitHistory.Criteria;
+import org.netbeans.modules.nbfx.ide.vcs.HistoryRows.ActionsRow;
 import org.netbeans.modules.nbfx.ide.vcs.HistoryRows.CommitRow;
 import org.netbeans.modules.nbfx.ide.vcs.HistoryRows.Field;
 import org.netbeans.modules.nbfx.ide.vcs.HistoryRows.FileRow;
@@ -91,6 +95,15 @@ final class GitHistoryPane extends BorderPane {
 
         /** All the files the commit {@code id} changed. */
         List<Change> changes(String id) throws IOException;
+    }
+
+    /**
+     * Something to do with a commit, offered as a link under it and in its context menu.
+     *
+     * @param text what the link says
+     * @param action what choosing it does; run on the FX thread
+     */
+    record CommitAction(String text, Runnable action) {
     }
 
     private static final RequestProcessor RP = new RequestProcessor("nbfx-git-history", 1);
@@ -128,6 +141,10 @@ final class GitHistoryPane extends BorderPane {
     private Criteria searched;
     /** Counts the searches: what an earlier one finds is no longer wanted. */
     private final AtomicLong searches = new AtomicLong();
+    /** What can be done with a commit; nothing unless told. */
+    private Function<Commit, List<CommitAction>> commitActions = commit -> List.of();
+    private boolean hasCommitActions;
+    private final ContextMenu menu = new ContextMenu();
     private boolean searching;
     private boolean readingMore;
     private String failure;
@@ -200,6 +217,28 @@ final class GitHistoryPane extends BorderPane {
         list.setCellFactory(view -> new RowCell());
         placeholder.getStyleClass().add("git-history-empty");
         list.setPlaceholder(placeholder);
+        // The actions of a commit, for the keyboard too: the menu of its row, or of one of its rows.
+        list.setContextMenu(menu);
+        list.setOnContextMenuRequested(event -> {
+            Commit commit = switch (list.getSelectionModel().getSelectedItem()) {
+                case CommitRow row -> row.commit();
+                case ActionsRow row -> row.commit();
+                case FileRow row -> row.commit();
+                case MoreRow row -> null;
+                case null -> null;
+            };
+            List<MenuItem> items = new ArrayList<>();
+            for (CommitAction action : commit == null ? List.<CommitAction>of() : actionsOf(commit)) {
+                MenuItem item = new MenuItem(action.text());
+                item.setOnAction(chosen -> action.action().run());
+                items.add(item);
+            }
+            menu.getItems().setAll(items);
+            if (items.isEmpty()) {
+                // Nothing to offer: no empty menu.
+                Platform.runLater(menu::hide);
+            }
+        });
         list.addEventHandler(KeyEvent.KEY_PRESSED, event -> {
             Row row = list.getSelectionModel().getSelectedItem();
             if (row instanceof CommitRow commit && (event.getCode() == KeyCode.ENTER
@@ -259,6 +298,22 @@ final class GitHistoryPane extends BorderPane {
         Label hint = new Label(message("Git.history.hint"));
         hint.getStyleClass().add("git-history-hint");
         return hint;
+    }
+
+    /**
+     * Has an expanded commit show {@code actions} under it, as links, and in its context menu.
+     * The pane runs them and knows nothing of what they do; one that changes the repository has
+     * the pane {@link #search() search} again.
+     */
+    void setCommitActions(Function<Commit, List<CommitAction>> actions) {
+        commitActions = Objects.requireNonNull(actions);
+        hasCommitActions = true;
+        showRows();
+    }
+
+    /** What can be done with {@code commit}. */
+    List<CommitAction> actionsOf(Commit commit) {
+        return commitActions.apply(commit);
     }
 
     /** Search: finds the commits the Search Options ask for, in place of those shown. */
@@ -389,7 +444,7 @@ final class GitHistoryPane extends BorderPane {
     private void showRows() {
         Row selected = list.getSelectionModel().getSelectedItem();
         List<Row> rows = HistoryRows.of(commits, expanded, this::changesOf, field.getValue(), contains.getText(),
-                more);
+                more, hasCommitActions);
         if (searching) {
             placeholder.setText(message("Git.history.searching"));
         } else if (failure != null) {
@@ -413,6 +468,8 @@ final class GitHistoryPane extends BorderPane {
             Row at = rows.get(i);
             boolean same = switch (row) {
                 case CommitRow commit -> at instanceof CommitRow other && other.commit().id().equals(commit.commit().id());
+                case ActionsRow actions -> at instanceof ActionsRow other
+                        && other.commit().id().equals(actions.commit().id());
                 case FileRow file -> at instanceof FileRow other && other.commit().id().equals(file.commit().id())
                         && other.change().path().equals(file.change().path());
                 case MoreRow ignored -> at instanceof MoreRow;
@@ -504,6 +561,7 @@ final class GitHistoryPane extends BorderPane {
         private final Label name = new Label();
         private final HBox fileBox = new HBox(kind, folder, name);
         private final Hyperlink moreLink = new Hyperlink(message("Git.history.more"));
+        private final HBox actionsBox = new HBox();
         private final Tooltip moved = new Tooltip();
 
         RowCell() {
@@ -542,11 +600,13 @@ final class GitHistoryPane extends BorderPane {
         @Override
         protected void updateItem(Row row, boolean empty) {
             super.updateItem(row, empty);
-            getStyleClass().removeAll("git-history-commit", "git-history-file", "git-history-more");
+            getStyleClass().removeAll("git-history-commit", "git-history-file", "git-history-more",
+                    "git-history-actions");
             setText(null);
             setTooltip(null);
             switch (empty ? null : row) {
                 case CommitRow commit -> showCommit(commit);
+                case ActionsRow actions -> showActions(actions.commit());
                 case FileRow file -> showFile(file.change());
                 case MoreRow ignored -> {
                     getStyleClass().add("git-history-more");
@@ -576,6 +636,26 @@ final class GitHistoryPane extends BorderPane {
             body.setManaged(shown);
             setGraphic(commitBox);
             setAccessibleText(commit.shortId() + " " + commit.summary() + ", " + who(commit));
+        }
+
+        private void showActions(Commit commit) {
+            getStyleClass().add("git-history-actions");
+            List<Hyperlink> links = new ArrayList<>();
+            StringBuilder told = new StringBuilder();
+            for (CommitAction action : actionsOf(commit)) {
+                Hyperlink link = new Hyperlink(action.text());
+                link.setMnemonicParsing(false);
+                link.setOnAction(event -> {
+                    // Chosen once, it is not shown as a link followed.
+                    link.setVisited(false);
+                    action.action().run();
+                });
+                links.add(link);
+                told.append(told.isEmpty() ? "" : ", ").append(action.text());
+            }
+            actionsBox.getChildren().setAll(links);
+            setGraphic(actionsBox);
+            setAccessibleText(told.toString());
         }
 
         private void showFile(Change change) {

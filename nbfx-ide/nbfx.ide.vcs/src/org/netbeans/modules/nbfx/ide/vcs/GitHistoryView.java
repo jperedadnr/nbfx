@@ -149,8 +149,16 @@ final class GitHistoryView {
 
     /** A document for the history of {@code scope}, which searches it at once. */
     static GitHistoryDocument document(Scope scope) {
+        GitHistoryPane pane = new GitHistoryPane(scope.root(), scope.paths());
+        // What an action did is shown: the history is searched again, and the Projects and Files
+        // trees mark their files anew - a checkout or a cherry-pick leaves other files changed.
+        GitCommitActions actions = new GitCommitActions(scope.root(), () -> {
+            GitStatusCache.getDefault().refresh(scope.root());
+            pane.search();
+        });
+        pane.setCommitActions(actions::actions);
         return new GitHistoryDocument(scope, NbBundle.getMessage(GitHistoryView.class, "Git.history.title", scope.name()),
-                new GitHistoryPane(scope.root(), scope.paths()));
+                pane);
     }
 
     /** Opens the History tabs of the last session again, while what they were of is still a working tree. */

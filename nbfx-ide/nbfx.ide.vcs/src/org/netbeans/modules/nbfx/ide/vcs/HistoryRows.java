@@ -27,8 +27,8 @@ import org.netbeans.modules.nbfx.ide.vcs.GitHistory.Change;
 import org.netbeans.modules.nbfx.ide.vcs.GitHistory.Commit;
 
 /**
- * The rows of the History view's summary: each commit that passes the filter, the files it changed
- * below it while it is expanded, and at the end a row to ask for more when the search has more. It
+ * The rows of the History view's summary: each commit that passes the filter, its actions and the
+ * files it changed below it while it is expanded, and at the end a row to ask for more when the search has more. It
  * arranges the commits it is given and reads nothing.
  *
  * @since 1.4
@@ -50,11 +50,15 @@ final class HistoryRows {
     }
 
     /** A row of the summary. */
-    sealed interface Row permits CommitRow, FileRow, MoreRow {
+    sealed interface Row permits CommitRow, ActionsRow, FileRow, MoreRow {
     }
 
     /** A commit; {@code expanded} when its whole message and its files are shown. */
     record CommitRow(Commit commit, boolean expanded) implements Row {
+    }
+
+    /** What can be done with {@code commit}, shown under it while it is expanded. */
+    record ActionsRow(Commit commit) implements Row {
     }
 
     /** A file {@code commit} changed. */
@@ -76,9 +80,10 @@ final class HistoryRows {
      * @param field where {@code contains} is looked for
      * @param contains the filter text, whatever the case; {@code null} or blank for no filter
      * @param more whether the search has more commits
+     * @param actions whether a commit has actions to show under it
      */
     static List<Row> of(List<Commit> commits, Set<String> expanded, Function<Commit, List<Change>> changesOf,
-            Field field, String contains, boolean more) {
+            Field field, String contains, boolean more, boolean actions) {
         List<Row> rows = new ArrayList<>();
         for (Commit commit : commits) {
             List<Change> changes = changesOf.apply(commit);
@@ -87,6 +92,9 @@ final class HistoryRows {
             }
             boolean open = expanded.contains(commit.id());
             rows.add(new CommitRow(commit, open));
+            if (open && actions) {
+                rows.add(new ActionsRow(commit));
+            }
             if (open) {
                 changes.forEach(change -> rows.add(new FileRow(commit, change)));
             }

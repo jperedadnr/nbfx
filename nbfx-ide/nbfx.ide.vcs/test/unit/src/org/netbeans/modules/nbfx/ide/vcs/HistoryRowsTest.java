@@ -24,6 +24,7 @@ import java.util.Set;
 import org.junit.Test;
 import org.netbeans.modules.nbfx.ide.vcs.GitHistory.Change;
 import org.netbeans.modules.nbfx.ide.vcs.GitHistory.Commit;
+import org.netbeans.modules.nbfx.ide.vcs.HistoryRows.ActionsRow;
 import org.netbeans.modules.nbfx.ide.vcs.HistoryRows.CommitRow;
 import org.netbeans.modules.nbfx.ide.vcs.HistoryRows.Field;
 import org.netbeans.modules.nbfx.ide.vcs.HistoryRows.FileRow;
@@ -47,27 +48,38 @@ public class HistoryRowsTest {
 
     @Test
     public void anOpenedCommitIsFollowedByItsFiles() {
-        List<Row> rows = HistoryRows.of(List.of(FIX, MOVE), Set.of(MOVE.id()), Commit::changes, Field.ALL, null, false);
+        List<Row> rows = HistoryRows.of(List.of(FIX, MOVE), Set.of(MOVE.id()), Commit::changes, Field.ALL, null, false,
+                false);
 
         assertEquals(List.of(new CommitRow(FIX, false), new CommitRow(MOVE, true), new FileRow(MOVE, MOVED),
                 new FileRow(MOVE, README)), rows);
     }
 
     @Test
+    public void anOpenedCommitWithActionsShowsThemBeforeItsFiles() {
+        List<Row> rows = HistoryRows.of(List.of(FIX, MOVE), Set.of(MOVE.id()), Commit::changes, Field.ALL, null, true,
+                true);
+
+        // Only the opened one; the row that asks for more stays last.
+        assertEquals(List.of(new CommitRow(FIX, false), new CommitRow(MOVE, true), new ActionsRow(MOVE),
+                new FileRow(MOVE, MOVED), new FileRow(MOVE, README), new MoreRow()), rows);
+    }
+
+    @Test
     public void theFilesShownAreThoseAskedFor() {
         // All the files of a commit, in place of those the search listed.
         List<Row> rows = HistoryRows.of(List.of(FIX), Set.of(FIX.id()), commit -> List.of(README, MOVED), Field.ALL,
-                " ", false);
+                " ", false, false);
 
         assertEquals(List.of(new CommitRow(FIX, true), new FileRow(FIX, README), new FileRow(FIX, MOVED)), rows);
     }
 
     @Test
     public void aSearchWithMoreEndsWithTheRowThatAsksForIt() {
-        List<Row> rows = HistoryRows.of(List.of(FIX), Set.of(), Commit::changes, Field.ALL, "", true);
+        List<Row> rows = HistoryRows.of(List.of(FIX), Set.of(), Commit::changes, Field.ALL, "", true, false);
 
         assertEquals(List.of(new CommitRow(FIX, false), new MoreRow()), rows);
-        assertEquals(List.of(), HistoryRows.of(List.of(), Set.of(), Commit::changes, Field.ALL, "", false));
+        assertEquals(List.of(), HistoryRows.of(List.of(), Set.of(), Commit::changes, Field.ALL, "", false, false));
     }
 
     @Test
@@ -93,7 +105,7 @@ public class HistoryRowsTest {
     }
 
     private static List<Commit> filtered(Field field, String contains) {
-        return HistoryRows.of(List.of(FIX, MOVE), Set.of(), Commit::changes, field, contains, false).stream()
+        return HistoryRows.of(List.of(FIX, MOVE), Set.of(), Commit::changes, field, contains, false, false).stream()
                 .map(row -> ((CommitRow) row).commit()).toList();
     }
 
