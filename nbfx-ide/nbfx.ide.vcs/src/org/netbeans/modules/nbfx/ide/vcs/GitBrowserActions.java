@@ -80,7 +80,7 @@ import org.openide.util.RequestProcessor;
  * know, runs git off the FX thread ({@link GitBranches}, {@link GitStashes}, {@link GitRemotes}), says what git said when it failed, and has
  * the browser read the repository again.
  *
- * @since 1.3
+ * @since 1.4
  */
 final class GitBrowserActions {
 

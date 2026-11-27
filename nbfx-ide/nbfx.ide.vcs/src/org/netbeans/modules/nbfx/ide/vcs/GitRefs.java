@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
  * and what is checked out - through the {@code git} command line. What git prints is parsed apart
  * from running it, a line at a time: no name of a ref holds a tab or a line break.
  *
- * @since 1.3
+ * @since 1.4
  */
 final class GitRefs {
 

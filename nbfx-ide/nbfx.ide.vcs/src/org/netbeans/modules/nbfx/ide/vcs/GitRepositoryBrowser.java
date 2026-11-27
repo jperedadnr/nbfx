@@ -60,7 +60,7 @@ import org.openide.util.RequestProcessor;
  * their actions in their context menu ({@link GitBrowserActions}); a double click checks a branch or
  * a tag out, and applies a stash.
  *
- * @since 1.3
+ * @since 1.4
  */
 final class GitRepositoryBrowser extends StackPane {
 
@@ -91,7 +91,7 @@ final class GitRepositoryBrowser extends StackPane {
     private volatile List<Path> requested = List.of();
     /** Reads the repositories; asked again before it ran, it runs once, for the last request. */
     private final RequestProcessor.Task reader = RP.create(this::read);
-    private final GitBrowserActions rowActions = new GitBrowserActions(this::reload);
+    private final GitBrowserActions rowActions = new GitBrowserActions(this::changed);
     private final ContextMenu menu = new ContextMenu();
 
     GitRepositoryBrowser() {
@@ -208,6 +208,15 @@ final class GitRepositoryBrowser extends StackPane {
         closed.removeAll(opened);
         available = List.copyOf(new LinkedHashSet<>(folders));
         showAvailable();
+    }
+
+    /**
+     * What an action did is shown: the repositories are read again, and the Projects and Files
+     * trees mark their files anew - a commit, a checkout or a stash leaves other files changed.
+     */
+    private void changed() {
+        roots.forEach(GitStatusCache.getDefault()::refresh);
+        reload();
     }
 
     /**

@@ -34,7 +34,7 @@ import org.openide.util.lookup.ServiceProvider;
  * tags, stashes and remotes. It is opened as in NetBeans, with Team &#9656; Repository &#9656;
  * Repository Browser ({@link GitTeamMenuFactory}).
  *
- * @since 1.3
+ * @since 1.4
  */
 @ServiceProvider(service = ViewProvider.class)
 @ViewRegistration(id = GitRepositoryBrowserProvider.ID, displayName = "#Git.browser.title",

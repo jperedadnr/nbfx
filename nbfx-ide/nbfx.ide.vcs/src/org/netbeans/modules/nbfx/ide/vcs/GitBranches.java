@@ -32,7 +32,7 @@ import org.netbeans.modules.nbfx.ide.vcs.GitRepositoryInfo.Tag;
  * is named to git by its full ref wherever that is taken for a revision, so that a tag is not meant
  * for the branch of its name, nor the branch for the tag.
  *
- * @since 1.3
+ * @since 1.4
  */
 final class GitBranches {
 

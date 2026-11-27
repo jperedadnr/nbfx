@@ -31,7 +31,7 @@ import org.netbeans.modules.nbfx.ide.vcs.GitRepositoryInfo.Remote;
  * where there is no one to answer: what a credential helper or an agent does not know fails, and
  * says so.
  *
- * @since 1.3
+ * @since 1.4
  */
 final class GitRemotes {
 

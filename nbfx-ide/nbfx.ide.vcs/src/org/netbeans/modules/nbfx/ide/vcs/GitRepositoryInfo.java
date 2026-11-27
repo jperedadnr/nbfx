@@ -33,7 +33,7 @@ import java.util.List;
  * @param tags the tags, by name
  * @param stashes the stashes, the last one made first
  * @param remotes the remotes, by name
- * @since 1.3
+ * @since 1.4
  */
 record GitRepositoryInfo(Path root, String head, List<Branch> localBranches, List<Branch> remoteBranches,
         List<Tag> tags, List<Stash> stashes, List<Remote> remotes) {

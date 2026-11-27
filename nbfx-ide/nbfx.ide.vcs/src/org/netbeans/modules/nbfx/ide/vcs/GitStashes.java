@@ -31,7 +31,7 @@ import org.openide.util.NbBundle;
  * them, which another takes when one is saved or dropped elsewhere: a stash is applied or dropped
  * only while its place still holds the commit the browser read there.
  *
- * @since 1.3
+ * @since 1.4
  */
 final class GitStashes {
 

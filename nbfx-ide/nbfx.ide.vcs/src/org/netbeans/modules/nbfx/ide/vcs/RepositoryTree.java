@@ -29,7 +29,7 @@ import org.openide.util.NbBundle;
  * the local and the remote ones apart - its tags, its stashes and its remotes, each remote with the
  * addresses it is fetched from and pushed to.
  *
- * @since 1.3
+ * @since 1.4
  */
 final class RepositoryTree {
 
